@@ -32,11 +32,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let unsubscribe = () => {};
     try {
       const supabase = getBrowserSupabaseClient();
-      supabase.auth.getUser()
+      supabase.auth.getSession()
         .then(({ data, error }) => {
           if (!active) return;
           if (error) setAuthError(error.message);
-          setUser(data.user);
+          setUser(data.session?.user ?? null);
         })
         .catch((error: unknown) => {
           if (!active) return;
