@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
+import { isRatingValue } from "@/lib/ratings";
 
 function isRatingRequest(
   value: unknown,
@@ -11,10 +12,7 @@ function isRatingRequest(
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
       request.recipeId,
     ) &&
-    typeof request.rating === "number" &&
-    Number.isInteger(request.rating) &&
-    request.rating >= 1 &&
-    request.rating <= 5
+    isRatingValue(request.rating)
   );
 }
 
@@ -37,10 +35,16 @@ export async function POST(request: Request) {
   }
 
   try {
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError) throw authError;
+    if (!user) {
+      return NextResponse.json({ error: "Sign in to rate a recipe." }, { status: 401 });
+    }
+
     const { data: recipe, error: recipeError } = await supabase
       .from("recipes")
-      .select("id")
+      .select("id, owner_id")
       .eq("id", body.recipeId)
       .maybeSingle();
 
@@ -48,12 +52,22 @@ export async function POST(request: Request) {
     if (!recipe) {
       return NextResponse.json({ error: "Recipe not found." }, { status: 404 });
     }
+    if (recipe.owner_id === user.id) {
+      return NextResponse.json(
+        { error: "You cannot rate your own recipe." },
+        { status: 403 },
+      );
+    }
 
-    const { error: insertError } = await supabase.from("ratings").insert({
-      recipe_id: body.recipeId,
-      rating: body.rating,
-    });
-    if (insertError) throw insertError;
+    const { error: upsertError } = await supabase.from("ratings").upsert(
+      {
+        recipe_id: body.recipeId,
+        user_id: user.id,
+        rating: body.rating,
+      },
+      { onConflict: "recipe_id,user_id" },
+    );
+    if (upsertError) throw upsertError;
 
     const { data: summary, error: summaryError } = await supabase
       .from("recipe_rating_summaries")

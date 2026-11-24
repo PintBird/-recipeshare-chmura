@@ -3,6 +3,15 @@ export type RatingSummary = {
   ratingCount: number;
 };
 
+export function isRatingValue(value: unknown): value is number {
+  return (
+    typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= 1 &&
+    value <= 5
+  );
+}
+
 export function summarizeRatings(ratings: number[]): RatingSummary {
   if (ratings.length === 0) {
     return { averageRating: 0, ratingCount: 0 };

@@ -2,13 +2,17 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import type { Recipe } from "@/lib/recipes";
 import {
   CATEGORIES,
   CUISINES,
   validateRecipeInput,
 } from "@/lib/recipes";
 import type { RecipeFieldErrors, RecipeInput } from "@/lib/recipes";
-import { createRecipe } from "@/lib/clientApi";
+import { createRecipe, updateRecipe, uploadRecipeImage } from "@/lib/clientApi";
+import { useAuth } from "@/components/AuthProvider";
+import AuthControls from "@/components/AuthControls";
+import { getUserDisplayName } from "@/lib/user";
 
 const initialForm: RecipeInput = {
   authorName: "",
@@ -29,15 +33,31 @@ const fieldLabels: Record<keyof RecipeInput, string> = {
   ingredients: "Ingredients",
   steps: "Steps",
   prepTimeMinutes: "Prep time",
-  imageUrl: "Image URL",
+  imageUrl: "Recipe photo",
 };
 
-export default function RecipeForm() {
+function recipeToInput(recipe: Recipe): RecipeInput {
+  return {
+    authorName: recipe.authorName,
+    title: recipe.title,
+    cuisine: recipe.cuisine,
+    category: recipe.category,
+    ingredients: recipe.ingredients.join("\n"),
+    steps: recipe.steps.join("\n"),
+    prepTimeMinutes: String(recipe.prepTimeMinutes),
+    imageUrl: recipe.imageUrl,
+  };
+}
+
+export default function RecipeForm({ recipe }: { recipe?: Recipe }) {
   const router = useRouter();
-  const [form, setForm] = useState(initialForm);
+  const { user, isLoading: isAuthLoading } = useAuth();
+  const [form, setForm] = useState(() => recipe ? recipeToInput(recipe) : initialForm);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [errors, setErrors] = useState<RecipeFieldErrors>({});
   const [saveError, setSaveError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const userName = user ? getUserDisplayName(user) : "";
 
   function updateField(field: keyof RecipeInput, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -47,7 +67,17 @@ export default function RecipeForm() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const validationErrors = validateRecipeInput(form);
+    if (!user) {
+      setSaveError("Sign in with Google before saving a recipe.");
+      return;
+    }
+
+    const submittedForm = {
+      ...form,
+      authorName: userName,
+      imageUrl: imageFile ? "https://upload-pending.invalid/image" : form.imageUrl,
+    };
+    const validationErrors = validateRecipeInput(submittedForm);
     setErrors(validationErrors);
     setSaveError("");
     if (Object.keys(validationErrors).length > 0) {
@@ -58,8 +88,14 @@ export default function RecipeForm() {
 
     setIsSubmitting(true);
     try {
-      await createRecipe(form);
-      router.push("/");
+      const imageUrl = imageFile
+        ? await uploadRecipeImage(imageFile)
+        : form.imageUrl;
+      const recipeInput = { ...submittedForm, imageUrl };
+      const saved = recipe
+        ? await updateRecipe(recipe.id, recipeInput)
+        : await createRecipe(recipeInput);
+      router.push(recipe ? `/recipes/${saved.id}` : "/");
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : "Your recipe could not be saved.");
     } finally {
@@ -69,12 +105,20 @@ export default function RecipeForm() {
 
   return (
     <form className="recipe-form" onSubmit={handleSubmit} noValidate>
+      {isAuthLoading ? (
+        <p className="status-message">Checking your sign-in…</p>
+      ) : !user ? (
+        <div className="sign-in-required">
+          <p>Sign in with Google to {recipe ? "edit" : "share"} a recipe.</p>
+          <AuthControls />
+        </div>
+      ) : (
+      <>
       <div className="form-section-title"><span>01</span><h2>The basics</h2></div>
       <div className="form-row">
         <label className="form-field">
           <span>Your name</span>
-          <input id="authorName" value={form.authorName} onChange={(event) => updateField("authorName", event.target.value)} aria-invalid={Boolean(errors.authorName)} aria-describedby={errors.authorName ? "authorName-error" : undefined} placeholder="e.g. Jamie Lee" />
-          {errors.authorName && <span className="field-error" id="authorName-error">{errors.authorName}</span>}
+          <input id="authorName" value={userName} readOnly aria-readonly="true" />
         </label>
         <label className="form-field">
           <span>Recipe title</span>
@@ -121,8 +165,21 @@ export default function RecipeForm() {
           {errors.prepTimeMinutes && <span className="field-error" id="prepTimeMinutes-error">{errors.prepTimeMinutes}</span>}
         </label>
         <label className="form-field">
-          <span>Image URL <small>Link to a food photo</small></span>
-          <input id="imageUrl" type="url" value={form.imageUrl} onChange={(event) => updateField("imageUrl", event.target.value)} aria-invalid={Boolean(errors.imageUrl)} aria-describedby={errors.imageUrl ? "imageUrl-error" : undefined} placeholder="https://..." />
+          <span>Recipe photo <small>JPEG, PNG, WebP, or GIF; up to 4 MiB</small></span>
+          <input
+            id="imageUrl"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            onChange={(event) => {
+              const file = event.target.files?.[0] ?? null;
+              setImageFile(file);
+              setErrors((current) => ({ ...current, imageUrl: undefined }));
+              setSaveError("");
+            }}
+            aria-invalid={Boolean(errors.imageUrl)}
+            aria-describedby={errors.imageUrl ? "imageUrl-error" : undefined}
+          />
+          {recipe && !imageFile && <span className="image-current">Current photo will be kept unless you choose another.</span>}
           {errors.imageUrl && <span className="field-error" id="imageUrl-error">{errors.imageUrl}</span>}
         </label>
       </div>
@@ -134,8 +191,10 @@ export default function RecipeForm() {
       )}
       {saveError && <p className="form-error-summary" role="alert">{saveError}</p>}
       <button className="button button-dark form-submit" type="submit" disabled={isSubmitting}>
-        {isSubmitting ? "Saving…" : "Add your recipe"} {!isSubmitting && <span aria-hidden="true">↗</span>}
+        {isSubmitting ? "Saving…" : recipe ? "Save changes" : "Add your recipe"} {!isSubmitting && <span aria-hidden="true">↗</span>}
       </button>
+      </>
+      )}
     </form>
   );
 }

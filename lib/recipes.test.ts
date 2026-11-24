@@ -2,11 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   filterRecipes,
   makeRecipe,
+  sortRecipes,
   validateRecipeInput,
   type RecipeInput,
   type Recipe,
 } from "./recipes";
-import { summarizeRatings } from "./ratings";
+import { isRatingValue, summarizeRatings } from "./ratings";
 
 const validInput: RecipeInput = {
   authorName: "Jamie Lee",
@@ -30,6 +31,8 @@ const testRecipes: Recipe[] = [
     steps: ["Season", "Cook"],
     prepTimeMinutes: 45,
     imageUrl: "https://example.com/chicken.jpg",
+    ownerId: "owner-1",
+    createdAt: "2026-01-01T00:00:00.000Z",
     averageRating: 4.5,
     ratingCount: 2,
   },
@@ -43,6 +46,8 @@ const testRecipes: Recipe[] = [
     steps: ["Simmer"],
     prepTimeMinutes: 30,
     imageUrl: "https://example.com/soup.jpg",
+    ownerId: "owner-2",
+    createdAt: "2026-02-01T00:00:00.000Z",
     averageRating: 0,
     ratingCount: 0,
   },
@@ -54,6 +59,8 @@ describe("recipe requirements", () => {
     expect(iranianMain.map((recipe) => recipe.id)).toEqual(["iranian-main"]);
     expect(filterRecipes(testRecipes, "", "")).toHaveLength(testRecipes.length);
     expect(filterRecipes(testRecipes, "Japanese", "Dessert")).toEqual([]);
+    expect(filterRecipes(testRecipes, "", "", "tomato")).toEqual([testRecipes[1]]);
+    expect(filterRecipes(testRecipes, "Iranian", "Main Dish", "tomato")).toEqual([]);
   });
 
   it("reports each missing required field without creating a recipe", () => {
@@ -90,5 +97,21 @@ describe("recipe requirements", () => {
       ratingCount: 3,
     });
     expect(summarizeRatings([])).toEqual({ averageRating: 0, ratingCount: 0 });
+  });
+
+  it("accepts only whole-number ratings from one through five", () => {
+    expect([1, 2, 3, 4, 5].every(isRatingValue)).toBe(true);
+    expect([0, 6, 2.5, "5"].some(isRatingValue)).toBe(false);
+  });
+
+  it("sorts by newest and by highest average rating", () => {
+    expect(sortRecipes(testRecipes, "newest").map((recipe) => recipe.id)).toEqual([
+      "italian-soup",
+      "iranian-main",
+    ]);
+    expect(sortRecipes(testRecipes, "highest-rated").map((recipe) => recipe.id)).toEqual([
+      "iranian-main",
+      "italian-soup",
+    ]);
   });
 });

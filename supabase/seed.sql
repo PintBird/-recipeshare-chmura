@@ -47,19 +47,3 @@ insert into public.recipes (
     'https://images.unsplash.com/photo-1528207776546-365bb710ee93?auto=format&fit=crop&w=1200&q=85'
   )
 on conflict (id) do nothing;
-
-insert into public.ratings (id, recipe_id, rating)
-select
-  md5('seed-rating-' || recipe_id::text || '-' || number::text)::uuid,
-  recipe_id,
-  case
-    when recipe_id = '00000000-0000-4000-8000-000000000001' and number % 4 = 0 then 4
-    when recipe_id = '00000000-0000-4000-8000-000000000002' and number > 6 then 4
-    else 5
-  end
-from (
-  select '00000000-0000-4000-8000-000000000001'::uuid as recipe_id, generate_series(1, 8) as number
-  union all
-  select '00000000-0000-4000-8000-000000000002'::uuid, generate_series(1, 10)
-) as sample_ratings
-on conflict (id) do nothing;

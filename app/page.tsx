@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { fetchRecipes } from "@/lib/clientApi";
-import { CUISINES, CATEGORIES, filterRecipes } from "@/lib/recipes";
+import { CUISINES, CATEGORIES, filterRecipes, sortRecipes } from "@/lib/recipes";
+import type { RecipeSort } from "@/lib/recipes";
 import type { Recipe } from "@/lib/recipes";
 import { isRatingSummary } from "@/lib/ratings";
 
@@ -31,6 +32,8 @@ export default function HomePage() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [cuisine, setCuisine] = useState("");
   const [category, setCategory] = useState("");
+  const [keyword, setKeyword] = useState("");
+  const [sort, setSort] = useState<RecipeSort>("newest");
   const [error, setError] = useState("");
   const [loaded, setLoaded] = useState(false);
 
@@ -80,7 +83,10 @@ export default function HomePage() {
     };
   }, []);
 
-  const visibleRecipes = filterRecipes(recipes, cuisine, category);
+  const visibleRecipes = sortRecipes(
+    filterRecipes(recipes, cuisine, category, keyword),
+    sort,
+  );
 
   return (
     <main>
@@ -109,6 +115,16 @@ export default function HomePage() {
           <p className="recipe-count">{loaded ? `${visibleRecipes.length} ${visibleRecipes.length === 1 ? "recipe" : "recipes"}` : "Loading recipes…"}</p>
         </div>
         <div className="filters" aria-label="Filter recipes">
+          <label className="keyword-filter">
+            <span className="filter-label">Search</span>
+            <input
+              type="search"
+              value={keyword}
+              onChange={(event) => setKeyword(event.target.value)}
+              placeholder="Recipe or ingredient"
+              aria-label="Search recipes by title or ingredient"
+            />
+          </label>
           <label>
             <span className="filter-label">Cuisine</span>
             <select value={cuisine} onChange={(event) => setCuisine(event.target.value)}>
@@ -123,8 +139,15 @@ export default function HomePage() {
               {CATEGORIES.map((item) => <option key={item} value={item}>{item}</option>)}
             </select>
           </label>
-          {(cuisine || category) && (
-            <button className="clear-filters" type="button" onClick={() => { setCuisine(""); setCategory(""); }}>
+          <label>
+            <span className="filter-label">Sort by</span>
+            <select value={sort} onChange={(event) => setSort(event.target.value as RecipeSort)}>
+              <option value="newest">Newest</option>
+              <option value="highest-rated">Highest rated</option>
+            </select>
+          </label>
+          {(cuisine || category || keyword) && (
+            <button className="clear-filters" type="button" onClick={() => { setCuisine(""); setCategory(""); setKeyword(""); }}>
               Clear filters <span aria-hidden="true">×</span>
             </button>
           )}

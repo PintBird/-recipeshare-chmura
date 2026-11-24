@@ -2,6 +2,7 @@ import type { Category, Cuisine } from "@/lib/recipes";
 
 type RecipeRow = {
   id: string;
+  owner_id: string | null;
   author_name: string;
   title: string;
   cuisine: Cuisine;
@@ -16,6 +17,7 @@ type RecipeRow = {
 type RatingRow = {
   id: string;
   recipe_id: string;
+  user_id: string | null;
   rating: number;
   created_at: string;
 };
@@ -32,16 +34,18 @@ export type Database = {
     Tables: {
       recipes: Table<
         RecipeRow,
-        Omit<RecipeRow, "id" | "created_at"> & {
+        Omit<RecipeRow, "id" | "owner_id" | "created_at"> & {
           id?: string;
+          owner_id?: string | null;
           created_at?: string;
         },
         Partial<RecipeRow>
       >;
       ratings: Table<
         RatingRow,
-        Omit<RatingRow, "id" | "created_at"> & {
+        Omit<RatingRow, "id" | "user_id" | "created_at"> & {
           id?: string;
+          user_id?: string | null;
           created_at?: string;
         },
         Partial<RatingRow>

@@ -29,6 +29,12 @@ nav { display: flex; align-items: center; gap: 34px; font-size: 13px; font-weigh
 nav > a:first-child { color: #676d65; }
 .nav-cta { padding: 11px 16px; border: 1px solid #d6d8ce; border-radius: 4px; }
 .nav-cta span { padding-left: 9px; color: var(--green); font-size: 17px; vertical-align: -1px; }
+.auth-control { position: relative; display: flex; align-items: center; gap: 10px; }
+.auth-control button { border: 0; background: transparent; font-size: 11px; font-weight: 600; }
+.sign-in-button, .profile-link { color: var(--green); }
+.sign-out-button { color: var(--muted); }
+.auth-loading { color: var(--muted); font-size: 11px; }
+.auth-error { position: absolute; top: calc(100% + 8px); right: 0; z-index: 4; width: max-content; max-width: 280px; padding: 8px 10px; border: 1px solid #ebc7c2; color: #91352e; background: #fcf1ef; font-size: 10px; font-weight: 400; }
 
 .hero { position: relative; display: grid; grid-template-columns: 1fr 1fr; min-height: 500px; max-width: 1240px; margin: auto; padding: 54px 42px 66px; overflow: hidden; }
 .hero-copy { z-index: 1; align-self: center; padding: 4px 0 12px 38px; }
@@ -61,7 +67,9 @@ h1, h2, h3, p { margin-top: 0; }
 .filter-label { color: #676d65; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
 .filters select, .form-field input, .form-field select, .form-field textarea { width: 100%; border: 1px solid #dfded5; border-radius: 3px; outline: none; color: var(--ink); background: #fffefa; }
 .filters select { height: 42px; padding: 0 34px 0 12px; font-size: 12px; }
+.filters input { width: 100%; height: 42px; padding: 0 12px; border: 1px solid #dfded5; border-radius: 3px; outline: none; color: var(--ink); background: #fffefa; font-size: 12px; }
 .filters select:focus, .form-field input:focus, .form-field select:focus, .form-field textarea:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(73,98,74,.1); }
+.filters input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(73,98,74,.1); }
 .clear-filters { height: 40px; padding: 0 8px; border: 0; color: var(--green); background: transparent; font-size: 12px; font-weight: 600; }
 .clear-filters span { padding-left: 4px; font-size: 17px; vertical-align: -1px; }
 .recipe-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
@@ -104,10 +112,14 @@ h1, h2, h3, p { margin-top: 0; }
 .form-row .form-field { margin-bottom: 0; }
 .form-field small { margin-left: 5px; color: #92958b; font-size: 10px; font-weight: 400; }
 .form-field input, .form-field select { height: 43px; padding: 0 12px; font-size: 12px; font-weight: 400; }
+.form-field input[type="file"] { height: auto; min-height: 43px; padding: 9px 10px; }
+.image-current { color: var(--muted); font-size: 10px; font-weight: 400; line-height: 1.5; }
 .form-field textarea { min-height: 95px; padding: 11px 12px; resize: vertical; font-size: 12px; font-weight: 400; line-height: 1.6; }
 .form-field input[aria-invalid="true"], .form-field select[aria-invalid="true"], .form-field textarea[aria-invalid="true"] { border-color: #b6463c; }
 .field-error { color: #a33d32; font-size: 10px; font-weight: 500; }
 .form-error-summary { margin: 16px 0 0; padding: 12px; border: 1px solid #ebc7c2; border-radius: 3px; color: #91352e; background: #fcf1ef; font-size: 12px; line-height: 1.6; }
+.sign-in-required { padding: 20px; border: 1px solid var(--line); background: #fffefa; }
+.sign-in-required > p, .rating-sign-in > p { margin: 0 0 12px; color: var(--muted); font-size: 13px; }
 .form-submit { width: 100%; margin-top: 23px; }
 .detail-page { max-width: 1130px; margin: auto; padding: 40px 42px 90px; }
 .back-link { display: inline-flex; align-items: center; gap: 9px; margin-bottom: 24px; color: var(--green); font-size: 12px; font-weight: 600; }
@@ -122,6 +134,10 @@ h1, h2, h3, p { margin-top: 0; }
 .detail-byline { margin: 0 0 22px; color: var(--muted); font-size: 12px; }
 .detail-byline strong { color: var(--ink); font-weight: 600; }
 .detail-stats { display: flex; flex-wrap: wrap; gap: 17px; padding-top: 15px; border-top: 1px solid #dcdacf; color: #696e66; font-size: 11px; }
+.owner-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 21px; }
+.button-outline, .button-danger { min-height: 39px; gap: 8px; padding: 0 14px; border: 1px solid #d6d8ce; color: var(--green); background: transparent; }
+.button-danger { border-color: #ebc7c2; color: #91352e; }
+.button-danger:disabled { cursor: not-allowed; opacity: .6; }
 .detail-content { display: grid; grid-template-columns: .8fr 1.2fr; gap: 65px; padding: 54px 35px 0; }
 .detail-content h2 { margin: 0 0 23px; font-family: var(--serif); font-size: 27px; font-weight: 500; letter-spacing: -.5px; }
 .ingredient-list { margin: 0; padding: 0; list-style: none; }
@@ -144,6 +160,11 @@ h1, h2, h3, p { margin-top: 0; }
 .detail-state { min-height: 55vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; text-align: center; }
 .detail-state .button { margin-top: 10px; }
 .text-link { margin-top: 10px; color: var(--green); font-size: 12px; font-weight: 600; }
+.profile-page { max-width: 1156px; min-height: 60vh; margin: auto; padding: 66px 42px 90px; }
+.profile-page > h1 { margin: 0 0 35px; font-family: var(--serif); font-size: clamp(40px, 5vw, 58px); font-weight: 500; letter-spacing: -2px; }
+.profile-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+.profile-heading h2 { margin: 0; font-family: var(--serif); font-size: 29px; font-weight: 500; }
+.rating-sign-in { margin-top: 5px; }
 
 @media (max-width: 900px) {
   .hero { min-height: 430px; padding: 42px 32px; }
@@ -159,6 +180,9 @@ h1, h2, h3, p { margin-top: 0; }
   .header-inner { padding: 0 20px; }
   nav { gap: 13px; font-size: 11px; }
   .nav-cta { padding: 9px 10px; }
+  .auth-control { gap: 7px; }
+  .auth-control button { font-size: 10px; }
+  .profile-link { max-width: 95px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .hero { grid-template-columns: 1fr; gap: 30px; padding: 54px 23px 44px; }
   .hero h1 { font-size: 52px; }
   .hero-description { max-width: 350px; }
@@ -192,4 +216,6 @@ h1, h2, h3, p { margin-top: 0; }
   .detail-heading h1 { font-size: 40px; }
   .detail-content { grid-template-columns: 1fr; gap: 40px; padding: 37px 5px 0; }
   .rating-panel { margin: 38px 5px 0; padding: 23px 20px; }
+  .profile-page { padding: 45px 20px 65px; }
+  .profile-heading { align-items: flex-start; gap: 14px; }
 }

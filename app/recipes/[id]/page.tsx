@@ -2,12 +2,16 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
-import { fetchRecipes, submitRating } from "@/lib/clientApi";
+import { useParams, useRouter } from "next/navigation";
+import { deleteRecipe, fetchRecipes, submitRating } from "@/lib/clientApi";
 import type { Recipe } from "@/lib/recipes";
+import { useAuth } from "@/components/AuthProvider";
+import AuthControls from "@/components/AuthControls";
 
 export default function RecipeDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [error, setError] = useState("");
   const [loaded, setLoaded] = useState(false);
@@ -15,6 +19,10 @@ export default function RecipeDetailPage() {
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
   const [ratingMessage, setRatingMessage] = useState("");
   const [ratingError, setRatingError] = useState("");
+  const [deleteError, setDeleteError] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const isOwner = Boolean(user && recipe?.ownerId === user.id);
 
   useEffect(() => {
     let active = true;
@@ -34,7 +42,7 @@ export default function RecipeDetailPage() {
   }, [params.id]);
 
   async function rateRecipe() {
-    if (!recipe || selectedRating < 1 || selectedRating > 5) return;
+    if (!recipe || !user || isOwner || selectedRating < 1 || selectedRating > 5) return;
     setIsSubmittingRating(true);
     setRatingError("");
     setRatingMessage("");
@@ -55,6 +63,20 @@ export default function RecipeDetailPage() {
       );
     } finally {
       setIsSubmittingRating(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!recipe || !isOwner) return;
+    if (!window.confirm("Delete this recipe? This cannot be undone.")) return;
+    setIsDeleting(true);
+    setDeleteError("");
+    try {
+      await deleteRecipe(recipe.id);
+      router.push("/profile");
+    } catch (failure) {
+      setDeleteError(failure instanceof Error ? failure.message : "Could not delete the recipe.");
+      setIsDeleting(false);
     }
   }
 
@@ -87,6 +109,14 @@ export default function RecipeDetailPage() {
             <span>{recipe.ratingCount} {recipe.ratingCount === 1 ? "rating" : "ratings"}</span>
             <span>{recipe.prepTimeMinutes} min prep</span>
           </div>
+          {isOwner && (
+            <div className="owner-actions">
+              <Link className="button button-outline" href={`/recipes/${recipe.id}/edit`}>Edit recipe</Link>
+              <button className="button button-danger" type="button" onClick={handleDelete} disabled={isDeleting}>
+                {isDeleting ? "Deleting…" : "Delete"}
+              </button>
+            </div>
+          )}
         </div>
       </div>
       <div className="detail-content">
@@ -105,9 +135,18 @@ export default function RecipeDetailPage() {
           </ol>
         </section>
       </div>
+      {deleteError && <p className="form-error-summary" role="alert">{deleteError}</p>}
       <section className="rating-panel" aria-labelledby="rate-recipe-heading">
         <p className="eyebrow">Cooked this recipe?</p>
         <h2 id="rate-recipe-heading">Leave a rating</h2>
+        {isAuthLoading ? (
+          <p className="rating-feedback">Checking your sign-in…</p>
+        ) : !user ? (
+          <div className="rating-sign-in"><p>Sign in with Google to rate recipes.</p><AuthControls /></div>
+        ) : isOwner ? (
+          <p className="rating-feedback">You can’t rate your own recipe.</p>
+        ) : (
+        <>
         <div className="star-picker" role="group" aria-label="Choose a rating from 1 to 5 stars">
           {[1, 2, 3, 4, 5].map((rating) => (
             <button
@@ -132,6 +171,8 @@ export default function RecipeDetailPage() {
         </button>
         {ratingMessage && <p className="rating-feedback" role="status">{ratingMessage}</p>}
         {ratingError && <p className="rating-feedback error-message" role="alert">{ratingError}</p>}
+        </>
+        )}
       </section>
     </main>
   );

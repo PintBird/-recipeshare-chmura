@@ -6,52 +6,20 @@ import {
   makeRecipe,
   validateRecipeInput,
 } from "@/lib/recipes";
-import type { Recipe } from "@/lib/recipes";
 import type { RatingSummary } from "@/lib/ratings";
-
-const EMPTY_RATING_SUMMARY: RatingSummary = {
-  averageRating: 0,
-  ratingCount: 0,
-};
+import { toRecipe } from "@/lib/recipeMapping";
+import { getUserDisplayName } from "@/lib/user";
 
 export const dynamic = "force-dynamic";
 
-function toRecipe(
-  row: {
-    id: string;
-    author_name: string;
-    title: string;
-    cuisine: Recipe["cuisine"];
-    category: Recipe["category"];
-    ingredients: string[];
-    steps: string[];
-    prep_time_minutes: number;
-    image_url: string;
-  },
-  summary: RatingSummary = EMPTY_RATING_SUMMARY,
-): Recipe {
-  return {
-    id: row.id,
-    authorName: row.author_name,
-    title: row.title,
-    cuisine: row.cuisine,
-    category: row.category,
-    ingredients: row.ingredients,
-    steps: row.steps,
-    prepTimeMinutes: row.prep_time_minutes,
-    imageUrl: row.image_url,
-    ...summary,
-  };
-}
-
 export async function GET() {
   try {
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseClient();
     const [recipesResult, summariesResult] = await Promise.all([
       supabase
         .from("recipes")
         .select(
-          "id, author_name, title, cuisine, category, ingredients, steps, prep_time_minutes, image_url",
+          "id, owner_id, author_name, title, cuisine, category, ingredients, steps, prep_time_minutes, image_url, created_at",
         )
         .order("created_at", { ascending: false }),
       supabase
@@ -116,12 +84,28 @@ export async function POST(request: Request) {
   }
 
   try {
+    const supabase = await getSupabaseClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError) throw authError;
+    if (!user) {
+      return NextResponse.json({ error: "Sign in to share a recipe." }, { status: 401 });
+    }
+
+    const authorName = getUserDisplayName(user);
+    if (!authorName.trim()) {
+      return NextResponse.json(
+        { error: "Your Google account does not include a name." },
+        { status: 400 },
+      );
+    }
+
+    input.authorName = authorName;
     const recipe = makeRecipe(randomUUID(), input);
-    const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from("recipes")
       .insert({
         id: recipe.id,
+        owner_id: user.id,
         author_name: recipe.authorName,
         title: recipe.title,
         cuisine: recipe.cuisine,
@@ -132,7 +116,7 @@ export async function POST(request: Request) {
         image_url: recipe.imageUrl,
       })
       .select(
-        "id, author_name, title, cuisine, category, ingredients, steps, prep_time_minutes, image_url",
+        "id, owner_id, author_name, title, cuisine, category, ingredients, steps, prep_time_minutes, image_url, created_at",
       )
       .single();
 

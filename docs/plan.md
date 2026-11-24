@@ -55,4 +55,13 @@
 - **Check:** After deployment, confirm both samples appear and can be used for filter testing.
 
 ## 10. Finish CI and documentation
-- **Covers:** E3,
+- **Covers:** E3, E4, E7
+- **Files:** test files, `.github/workflows/ci.yml`, `README.md`
+- **Test:** Run all tests and the production build with one documented command each.
+- **Check:** Push a change and verify CI reports passing tests and build.
+
+## 11. Add Should features
+- **Covers:** S1–S6
+- **Files:** Supabase Auth and Storage setup, auth/profile pages, owner-scoped recipe APIs, rating policies, recipe form, home page, and tests.
+- **Test:** Cover rating bounds and summaries, owner-safe recipe mutations, keyword/filter combinations, and sorting.
+- **Check:** Configure Google OAuth and Supabase environment variables, apply `supabase/schema.sql`, seed sample recipes, and verify sign-in, owner-only edit/delete, replacement ratings, image persistence, search, and sort on the deployed app.

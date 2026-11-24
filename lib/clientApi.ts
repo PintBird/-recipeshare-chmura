@@ -5,10 +5,7 @@ import type { RatingSummary } from "@/lib/ratings";
 
 type RatingResult = { summary: RatingSummary };
 
-async function readResponse<T>(
-  response: Response,
-  isExpected: (value: unknown) => value is T,
-): Promise<T> {
+async function throwResponseError(response: Response): Promise<never> {
   let payload: unknown;
   try {
     payload = await response.json();
@@ -16,16 +13,28 @@ async function readResponse<T>(
     throw new Error("The server returned an unreadable response.");
   }
 
-  if (!response.ok) {
-    if (
-      typeof payload === "object" &&
-      payload !== null &&
-      "error" in payload &&
-      typeof payload.error === "string"
-    ) {
-      throw new Error(payload.error);
-    }
-    throw new Error("The request could not be completed.");
+  if (
+    typeof payload === "object" &&
+    payload !== null &&
+    "error" in payload &&
+    typeof payload.error === "string"
+  ) {
+    throw new Error(payload.error);
+  }
+  throw new Error("The request could not be completed.");
+}
+
+async function readResponse<T>(
+  response: Response,
+  isExpected: (value: unknown) => value is T,
+): Promise<T> {
+  if (!response.ok) return throwResponseError(response);
+
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
+    throw new Error("The server returned an unreadable response.");
   }
 
   if (!isExpected(payload)) {
@@ -60,6 +69,39 @@ export async function createRecipe(input: RecipeInput): Promise<Recipe> {
     body: JSON.stringify(input),
   });
   return readResponse(response, isRecipe);
+}
+
+export async function updateRecipe(
+  recipeId: string,
+  input: RecipeInput,
+): Promise<Recipe> {
+  const response = await fetch(`/api/recipes/${recipeId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  return readResponse(response, isRecipe);
+}
+
+export async function deleteRecipe(recipeId: string): Promise<void> {
+  const response = await fetch(`/api/recipes/${recipeId}`, { method: "DELETE" });
+  if (response.ok) return;
+  return throwResponseError(response);
+}
+
+export async function uploadRecipeImage(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.set("image", file);
+  const response = await fetch("/api/uploads", { method: "POST", body: formData });
+  const result = await readResponse(
+    response,
+    (value): value is { imageUrl: string } =>
+      typeof value === "object" &&
+      value !== null &&
+      "imageUrl" in value &&
+      typeof value.imageUrl === "string",
+  );
+  return result.imageUrl;
 }
 
 export async function submitRating(

@@ -35,6 +35,8 @@ export type Recipe = {
   steps: string[];
   prepTimeMinutes: number;
   imageUrl: string;
+  ownerId: string | null;
+  createdAt: string;
   averageRating: number;
   ratingCount: number;
 };
@@ -77,6 +79,8 @@ export function isRecipe(value: unknown): value is Recipe {
     recipe.steps.every((step) => typeof step === "string") &&
     typeof recipe.prepTimeMinutes === "number" &&
     typeof recipe.imageUrl === "string" &&
+    (typeof recipe.ownerId === "string" || recipe.ownerId === null) &&
+    typeof recipe.createdAt === "string" &&
     typeof recipe.averageRating === "number" &&
     typeof recipe.ratingCount === "number"
   );
@@ -101,12 +105,34 @@ export function filterRecipes(
   recipes: Recipe[],
   cuisine: string,
   category: string,
+  keyword = "",
 ): Recipe[] {
+  const search = keyword.trim().toLocaleLowerCase();
   return recipes.filter(
     (recipe) =>
       (!cuisine || recipe.cuisine === cuisine) &&
-      (!category || recipe.category === category),
+      (!category || recipe.category === category) &&
+      (!search ||
+        recipe.title.toLocaleLowerCase().includes(search) ||
+        recipe.ingredients.some((ingredient) =>
+          ingredient.toLocaleLowerCase().includes(search),
+        )),
   );
+}
+
+export type RecipeSort = "newest" | "highest-rated";
+
+export function sortRecipes(recipes: Recipe[], sort: RecipeSort): Recipe[] {
+  return [...recipes].sort((first, second) => {
+    if (sort === "highest-rated") {
+      return (
+        second.averageRating - first.averageRating ||
+        second.ratingCount - first.ratingCount ||
+        Date.parse(second.createdAt) - Date.parse(first.createdAt)
+      );
+    }
+    return Date.parse(second.createdAt) - Date.parse(first.createdAt);
+  });
 }
 
 export function validateRecipeInput(input: RecipeInput): RecipeFieldErrors {
@@ -182,6 +208,8 @@ export function makeRecipe(id: string, input: RecipeInput): Recipe {
       .filter(Boolean),
     prepTimeMinutes: Number(input.prepTimeMinutes),
     imageUrl: input.imageUrl.trim(),
+    ownerId: null,
+    createdAt: new Date().toISOString(),
     averageRating: 0,
     ratingCount: 0,
   };
