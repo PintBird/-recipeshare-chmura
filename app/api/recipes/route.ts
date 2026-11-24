@@ -1,50 +1,49 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
+import { getNeonClient } from "@/lib/neon";
 import { getSupabaseClient } from "@/lib/supabase";
 import {
   isRecipeInput,
   makeRecipe,
   validateRecipeInput,
 } from "@/lib/recipes";
-import type { RatingSummary } from "@/lib/ratings";
-import { toRecipe } from "@/lib/recipeMapping";
+import {
+  toRecipe,
+  toRecipeWithSummary,
+  type RecipeDatabaseRow,
+  type RecipeWithSummaryDatabaseRow,
+} from "@/lib/recipeMapping";
 import { getUserDisplayName } from "@/lib/user";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const supabase = await getSupabaseClient();
-    const [recipesResult, summariesResult] = await Promise.all([
-      supabase
-        .from("recipes")
-        .select(
-          "id, owner_id, author_name, title, cuisine, category, ingredients, steps, prep_time_minutes, image_url, created_at",
-        )
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("recipe_rating_summaries")
-        .select("recipe_id, average_rating, rating_count"),
-    ]);
+    const sql = getNeonClient();
+    const rows = await sql`
+      SELECT
+        recipes.id::text,
+        recipes.owner_id::text,
+        recipes.author_name,
+        recipes.title,
+        recipes.cuisine,
+        recipes.category,
+        recipes.ingredients,
+        recipes.steps,
+        recipes.prep_time_minutes,
+        recipes.image_url,
+        recipes.created_at::text,
+        summaries.average_rating,
+        COALESCE(summaries.rating_count, 0)::integer AS rating_count
+      FROM public.recipes AS recipes
+      LEFT JOIN public.recipe_rating_summaries AS summaries
+        ON summaries.recipe_id = recipes.id
+      ORDER BY recipes.created_at DESC
+    ` as RecipeWithSummaryDatabaseRow[];
 
-    if (recipesResult.error) throw recipesResult.error;
-    if (summariesResult.error) throw summariesResult.error;
-
-    const summariesByRecipe = new Map<string, RatingSummary>();
-    for (const summary of summariesResult.data) {
-      summariesByRecipe.set(summary.recipe_id, {
-        averageRating: summary.average_rating,
-        ratingCount: summary.rating_count,
-      });
-    }
-
-    return NextResponse.json(
-      recipesResult.data.map((recipe) =>
-        toRecipe(recipe, summariesByRecipe.get(recipe.id)),
-      ),
-    );
+    return NextResponse.json(rows.map(toRecipeWithSummary));
   } catch (error) {
-    console.error("Could not load recipes from Supabase.", error);
+    console.error("Could not load recipes from Neon.", error);
     return NextResponse.json(
       {
         error:
@@ -101,29 +100,41 @@ export async function POST(request: Request) {
 
     input.authorName = authorName;
     const recipe = makeRecipe(randomUUID(), input);
-    const { data, error } = await supabase
-      .from("recipes")
-      .insert({
-        id: recipe.id,
-        owner_id: user.id,
-        author_name: recipe.authorName,
-        title: recipe.title,
-        cuisine: recipe.cuisine,
-        category: recipe.category,
-        ingredients: recipe.ingredients,
-        steps: recipe.steps,
-        prep_time_minutes: recipe.prepTimeMinutes,
-        image_url: recipe.imageUrl,
-      })
-      .select(
-        "id, owner_id, author_name, title, cuisine, category, ingredients, steps, prep_time_minutes, image_url, created_at",
+    const sql = getNeonClient();
+    const [data] = await sql`
+      INSERT INTO public.recipes (
+        id, owner_id, author_name, title, cuisine, category, ingredients,
+        steps, prep_time_minutes, image_url
+      ) VALUES (
+        ${recipe.id}::uuid,
+        ${user.id}::uuid,
+        ${recipe.authorName},
+        ${recipe.title},
+        ${recipe.cuisine},
+        ${recipe.category},
+        ${JSON.stringify(recipe.ingredients)}::jsonb,
+        ${JSON.stringify(recipe.steps)}::jsonb,
+        ${recipe.prepTimeMinutes},
+        ${recipe.imageUrl}
       )
-      .single();
+      RETURNING
+        id::text,
+        owner_id::text,
+        author_name,
+        title,
+        cuisine,
+        category,
+        ingredients,
+        steps,
+        prep_time_minutes,
+        image_url,
+        created_at::text
+    ` as RecipeDatabaseRow[];
 
-    if (error) throw error;
+    if (!data) throw new Error("The database did not return the saved recipe.");
     return NextResponse.json(toRecipe(data), { status: 201 });
   } catch (error) {
-    console.error("Could not save recipe to Supabase.", error);
+    console.error("Could not save recipe to Neon.", error);
     return NextResponse.json(
       {
         error:

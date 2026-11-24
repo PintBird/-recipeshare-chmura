@@ -15,6 +15,11 @@ export type RecipeDatabaseRow = {
   created_at: string;
 };
 
+export type RecipeWithSummaryDatabaseRow = RecipeDatabaseRow & {
+  average_rating: number | null;
+  rating_count: number;
+};
+
 const EMPTY_RATING_SUMMARY: RatingSummary = {
   averageRating: 0,
   ratingCount: 0,
@@ -38,4 +43,11 @@ export function toRecipe(
     createdAt: row.created_at,
     ...summary,
   };
+}
+
+export function toRecipeWithSummary(row: RecipeWithSummaryDatabaseRow): Recipe {
+  return toRecipe(row, {
+    averageRating: Number(row.average_rating ?? 0),
+    ratingCount: Number(row.rating_count),
+  });
 }

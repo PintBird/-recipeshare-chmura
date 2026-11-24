@@ -6,11 +6,11 @@
 - **Test:** Add a smoke test that the home page renders.
 - **Check:** Run `npm install`, `npm test`, and `npm run build`; push to `main` and verify Vercel serves a live placeholder page.
 
-## 2. Configure Supabase and the data model
+## 2. Configure Neon and the data model
 - **Covers:** M6
-- **Files:** `lib/supabase.ts`, `supabase/schema.sql`, `.env.example`
+- **Files:** `lib/neon.ts`, `neon/schema.sql`, `.env.example`
 - **Test:** Add a test that verifies the recipe and rating data structures.
-- **Check:** Add environment variables in Vercel and confirm the app can read a recipe from Supabase.
+- **Check:** Connect a Neon database to Vercel, set `DATABASE_URL`, and confirm the app can read a recipe from Neon.
 
 ## 3. Build recipe cards
 - **Covers:** M1
@@ -44,13 +44,13 @@
 
 ## 8. Verify persistent shared data
 - **Covers:** M6
-- **Files:** Supabase migrations and all database access modules
+- **Files:** Neon schema and database access modules
 - **Test:** Verify that created recipes and ratings persist through separate requests.
 - **Check:** Create or rate a recipe, open the deployed app from another device, and redeploy before checking again.
 
 ## 9. Add at least two sample recipes
 - **Covers:** M7
-- **Files:** `supabase/seed.sql`
+- **Files:** `neon/seed.sql`
 - **Test:** Verify that seeded recipes use different cuisines and categories.
 - **Check:** After deployment, confirm both samples appear and can be used for filter testing.
 
@@ -62,6 +62,6 @@
 
 ## 11. Add Should features
 - **Covers:** S1–S6
-- **Files:** Supabase Auth and Storage setup, auth/profile pages, owner-scoped recipe APIs, rating policies, recipe form, home page, and tests.
+- **Files:** Supabase Auth and Storage setup, auth/profile pages, owner-scoped recipe APIs, rating constraints, recipe form, home page, and tests.
 - **Test:** Cover rating bounds and summaries, owner-safe recipe mutations, keyword/filter combinations, and sorting.
-- **Check:** Configure Google OAuth and Supabase environment variables, apply `supabase/schema.sql`, seed sample recipes, and verify sign-in, owner-only edit/delete, replacement ratings, image persistence, search, and sort on the deployed app.
+- **Check:** Configure Neon and Supabase environment variables, apply both schemas and the Neon seed SQL, and verify sign-in, owner-only edit/delete, replacement ratings, image persistence, search, and sort on the deployed app.

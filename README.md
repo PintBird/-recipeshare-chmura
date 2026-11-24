@@ -2,15 +2,17 @@
 
 A recipe-sharing app built with Next.js, TypeScript, and React.
 
-## Supabase setup
+## Database and service setup
 
-Create a Supabase project, then run `supabase/schema.sql` and `supabase/seed.sql` in the Supabase SQL Editor (in that order). This creates the public recipes and ratings tables, enables row-level security, and seeds four recipes across different cuisines and categories.
+Create a free Neon database from your Vercel project's **Storage** tab and connect it to the project. Vercel's Neon integration supplies the private `DATABASE_URL` environment variable. For local development, copy `.env.example` to `.env.local` and add the Neon connection string as `DATABASE_URL`. Never expose it with a `NEXT_PUBLIC_` prefix or commit the local environment file.
 
-Copy `.env.example` to `.env.local` and set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` from the Supabase project settings. The anon key is used only with row-level policies; never put a service-role key in the app.
+In the Neon SQL Editor, run `neon/schema.sql` and then `neon/seed.sql`. This creates the recipes and ratings tables, ownership and rating constraints, and four sample recipes across different cuisines and categories. The seed script is safe to run again.
 
-In Supabase Authentication, enable Google and configure its OAuth client credentials. Set the Google callback URL to the Supabase project's `/auth/v1/callback`, then add the app's local and deployed `/auth/callback` URLs to Supabase's redirect URL allowlist. Keep the Google client secret in Supabase, not in this repository.
+Supabase is still used for Google sign-in and persistent recipe-image uploads; Neon stores all recipe and rating records. Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in `.env.local` and in Vercel. In Supabase Authentication, enable Google and configure its OAuth client credentials. Set the Google callback URL to the Supabase project's `/auth/v1/callback`, then add the app's local and deployed `/auth/callback` URLs to Supabase's redirect URL allowlist. Keep the Google client secret in Supabase, not in this repository.
 
-The schema grants recipe writes only to signed-in owners, enforces one rating per signed-in user and recipe, prevents authors rating their own recipes, and creates the public `recipe-images` bucket for owner-scoped uploads. Applying the schema upgrades the earlier visitor-only policies; existing anonymous ratings are retained but excluded from the average, while all new ratings require Google sign-in. Image uploads are limited to 4 MiB to fit common serverless request limits.
+Run `supabase/schema.sql` in the Supabase SQL Editor to create the public `recipe-images` bucket and owner-scoped upload policies. Recipe changes are authorized by server API routes after verifying the Supabase sign-in; Neon also enforces unique user ratings and prevents authors from rating their own recipes. Image uploads are limited to 4 MiB to fit common serverless request limits.
+
+Existing recipe and rating rows in a previous Supabase database are not copied automatically; run the Neon seed script to populate the four starter recipes.
 
 ## Run locally
 
@@ -40,15 +42,15 @@ Create a production build with `npm run build`, then serve it with `npm start`.
 - [~] M3: Add a recipe with required-field validation (deployment verification pending).
 - [~] M4: Filter by cuisine and category, including combined filters and the no-results state (deployment verification pending).
 - [~] M5: Submit 1–5 star ratings and update the average and count (deployment verification pending).
-- [~] M6: Store recipes and ratings in Supabase for shared, persistent access (requires project configuration).
-- [~] M7: Seed four sample recipes in Supabase with distinct cuisines and categories (requires project setup).
+- [~] M6: Store recipes and ratings in Neon for shared, persistent access (requires project configuration).
+- [~] M7: Seed four sample recipes in Neon with distinct cuisines and categories (requires running the seed SQL).
 
 ### Should
 
 - [~] S1: Google sign-in, sign-out, author names, and a recipe profile (Google configuration required).
-- [~] S2: Edit and delete own recipes (Supabase schema required to enforce ownership).
-- [~] S3: Signed-in ratings, one rating per user/recipe, and no author self-ratings (Supabase schema required).
-- [~] S4: Persistent recipe-photo uploads (Supabase storage setup required).
+- [~] S2: Edit and delete own recipes (server verifies recipe ownership).
+- [~] S3: Signed-in ratings, one rating per user/recipe, and no author self-ratings (Neon constraints and server checks).
+- [~] S4: Persistent recipe-photo uploads (Supabase Storage setup required).
 - [x] S5: Keyword search by recipe title and ingredients, combined with filters.
 - [x] S6: Sort by newest or highest rated.
 
@@ -63,4 +65,4 @@ Create a production build with `npm run build`, then serve it with `npm start`.
 
 ## Data and deployment
 
-Recipes and ratings are read from and written to Supabase through server API routes. The Google sign-in, ownership protections, and image uploads require applying the supplied schema and configuring Google OAuth. Seed data can be loaded by running the supplied SQL script. No live database or app deployment is configured in this repository yet.
+Recipes and ratings are read from and written to Neon through server API routes. The Neon connection string must be set as `DATABASE_URL` in the local environment and Vercel. Google sign-in and image uploads continue to use Supabase and require its environment variables, Google OAuth setup, and storage schema. The repository includes Neon schema and seed scripts; run them in the Neon SQL Editor before using the app.

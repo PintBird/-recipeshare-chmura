@@ -11,8 +11,9 @@ Treat `docs/spec.md` as the source of truth for requirements and acceptance crit
 - Next.js
 - React
 - TypeScript
-- Supabase PostgreSQL
+- Neon PostgreSQL (recipes and ratings)
 - Supabase Auth (for the Google sign-in features)
+- Supabase Storage (for persistent recipe images)
 - Vercel hosting
 - GitHub Actions for CI
 

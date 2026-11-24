@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getNeonClient } from "@/lib/neon";
 import { getSupabaseClient } from "@/lib/supabase";
 import { isRatingValue } from "@/lib/ratings";
 
@@ -42,13 +43,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Sign in to rate a recipe." }, { status: 401 });
     }
 
-    const { data: recipe, error: recipeError } = await supabase
-      .from("recipes")
-      .select("id, owner_id")
-      .eq("id", body.recipeId)
-      .maybeSingle();
-
-    if (recipeError) throw recipeError;
+    const sql = getNeonClient();
+    const [recipe] = await sql`
+      SELECT owner_id::text
+      FROM public.recipes
+      WHERE id = ${body.recipeId}::uuid
+    ` as { owner_id: string | null }[];
     if (!recipe) {
       return NextResponse.json({ error: "Recipe not found." }, { status: 404 });
     }
@@ -59,31 +59,28 @@ export async function POST(request: Request) {
       );
     }
 
-    const { error: upsertError } = await supabase.from("ratings").upsert(
-      {
-        recipe_id: body.recipeId,
-        user_id: user.id,
-        rating: body.rating,
-      },
-      { onConflict: "recipe_id,user_id" },
-    );
-    if (upsertError) throw upsertError;
+    await sql`
+      INSERT INTO public.ratings (recipe_id, user_id, rating)
+      VALUES (${body.recipeId}::uuid, ${user.id}::uuid, ${body.rating})
+      ON CONFLICT (recipe_id, user_id)
+      DO UPDATE SET rating = EXCLUDED.rating
+    `;
 
-    const { data: summary, error: summaryError } = await supabase
-      .from("recipe_rating_summaries")
-      .select("average_rating, rating_count")
-      .eq("recipe_id", body.recipeId)
-      .single();
-    if (summaryError) throw summaryError;
+    const [summary] = await sql`
+      SELECT average_rating, rating_count
+      FROM public.recipe_rating_summaries
+      WHERE recipe_id = ${body.recipeId}::uuid
+    ` as { average_rating: number; rating_count: number }[];
+    if (!summary) throw new Error("The database did not return the rating summary.");
 
     return NextResponse.json({
       summary: {
-        averageRating: summary.average_rating,
-        ratingCount: summary.rating_count,
+        averageRating: Number(summary.average_rating),
+        ratingCount: Number(summary.rating_count),
       },
     });
   } catch (error) {
-    console.error("Could not save recipe rating to Supabase.", error);
+    console.error("Could not save recipe rating to Neon.", error);
     return NextResponse.json(
       {
         error:

@@ -1,0 +1,49 @@
+insert into public.recipes (
+  id, author_name, title, cuisine, category, ingredients, steps,
+  prep_time_minutes, image_url
+) values
+  (
+    '00000000-0000-4000-8000-000000000001',
+    'Niloofar',
+    'Persian Saffron Chicken',
+    'Iranian',
+    'Main Dish',
+    '["4 chicken thighs", "1 large onion, sliced", "1/2 teaspoon bloomed saffron", "2 tablespoons lemon juice", "Salt and pepper"]'::jsonb,
+    '["Season the chicken with salt, pepper, saffron, and lemon juice.", "Brown the onion in a pan, then add the chicken.", "Cover and cook gently for 35 minutes, until cooked through."]'::jsonb,
+    45,
+    'https://images.unsplash.com/photo-1532550907401-a500c9a57435?auto=format&fit=crop&w=1200&q=85'
+  ),
+  (
+    '00000000-0000-4000-8000-000000000002',
+    'Marco',
+    'Tuscan Tomato Soup',
+    'Italian',
+    'Soup',
+    '["6 ripe tomatoes", "1 small onion, chopped", "2 cups vegetable stock", "A handful of fresh basil", "2 tablespoons olive oil"]'::jsonb,
+    '["Soften the onion in olive oil over medium heat.", "Add tomatoes and stock, then simmer for 20 minutes.", "Blend until smooth and finish with fresh basil."]'::jsonb,
+    30,
+    'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=1200&q=85'
+  ),
+  (
+    '00000000-0000-4000-8000-000000000003',
+    'Mei',
+    'Sesame Ginger Noodles',
+    'Chinese',
+    'Main Dish',
+    '["250 g wheat noodles", "2 tablespoons sesame oil", "1 tablespoon grated ginger", "2 tablespoons soy sauce", "2 green onions, sliced"]'::jsonb,
+    '["Cook the noodles according to the package directions.", "Warm sesame oil with ginger, then stir in soy sauce.", "Toss the noodles in the sauce and top with green onions."]'::jsonb,
+    20,
+    'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=1200&q=85'
+  ),
+  (
+    '00000000-0000-4000-8000-000000000004',
+    'Asha',
+    'Cardamom Banana Pancakes',
+    'Indian',
+    'Breakfast',
+    '["1 ripe banana", "1 cup flour", "3/4 cup milk", "1/2 teaspoon ground cardamom", "1 teaspoon baking powder"]'::jsonb,
+    '["Mash the banana and whisk it with the milk.", "Fold in the flour, cardamom, and baking powder.", "Cook small pancakes in a lightly oiled pan until golden on both sides."]'::jsonb,
+    25,
+    'https://images.unsplash.com/photo-1528207776546-365bb710ee93?auto=format&fit=crop&w=1200&q=85'
+  )
+on conflict (id) do nothing;
